@@ -207,6 +207,14 @@ void loop(){
   if(CurrentMonitor::checkTime()){      // if sufficient time has elapsed since last update, check current draw on Main and Program Tracks 
     mainMonitor.check();
     progMonitor.check();
+    // Also check overall shield status.
+    if (digitalRead(MOTOR_SHIELD_STATUS_PIN) == LOW &&
+        digitalRead(SIGNAL_ENABLE_PIN_PROG)==HIGH) {
+      // Disable all power, print error signal.
+      digitalWrite(SIGNAL_ENABLE_PIN_PROG,LOW);
+      digitalWrite(SIGNAL_ENABLE_PIN_MAIN,LOW);
+      INTERFACE.print("<psf>");
+    }
   }
 
   Sensor::check();    // check sensors for activate/de-activate
@@ -387,6 +395,9 @@ void setup(){
   bitSet(TIMSK3,OCIE3B);    // enable interrupt vector for Timer 3 Output Compare B Match (OCR3B)    
   
 #endif
+
+  // pull the shield status pin high, motor shield expected to drive it low on fault.
+  pinMode(MOTOR_SHIELD_STATUS_PIN, INPUT_PULLUP);
 
 } // setup
 

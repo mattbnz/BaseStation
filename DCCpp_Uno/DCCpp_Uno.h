@@ -88,6 +88,10 @@ Part of DCC++ BASE STATION for the Arduino
 
 #endif
 
+// A pin that an entire shield status can be read from, pulled high by default
+// shield is expected to pull low on fault. Currently only used by Pololu shields.
+#define MOTOR_SHIELD_STATUS_PIN 5
+
 /////////////////////////////////////////////////////////////////////////////////////
 // SELECT COMMUNICATION INTERACE
 /////////////////////////////////////////////////////////////////////////////////////
