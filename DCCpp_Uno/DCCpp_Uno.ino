@@ -196,6 +196,8 @@ volatile RegisterList progRegs(2);                     // create a shorter list 
 CurrentMonitor mainMonitor(CURRENT_MONITOR_PIN_MAIN,"<p2>");  // create monitor for current on Main Track
 CurrentMonitor progMonitor(CURRENT_MONITOR_PIN_PROG,"<p3>");  // create monitor for current on Program Track
 
+bool shield_faulted = false;
+
 ///////////////////////////////////////////////////////////////////////////////
 // MAIN ARDUINO LOOP
 ///////////////////////////////////////////////////////////////////////////////
@@ -210,15 +212,42 @@ void loop(){
     // Also check overall shield status.
     if (digitalRead(MOTOR_SHIELD_STATUS_PIN) == LOW &&
         digitalRead(SIGNAL_ENABLE_PIN_PROG)==HIGH) {
-      // Disable all power, print error signal.
-      digitalWrite(SIGNAL_ENABLE_PIN_PROG,LOW);
-      digitalWrite(SIGNAL_ENABLE_PIN_MAIN,LOW);
-      INTERFACE.print("<psf>");
+      if (shield_faulted) {
+        // Double-fault, disable power, print error signal.
+        digitalWrite(SIGNAL_ENABLE_PIN_PROG,LOW);
+        digitalWrite(SIGNAL_ENABLE_PIN_MAIN,LOW);
+        INTERFACE.print("<psf>");  // power shield fault!
+        // reset fault state, since user has to explictly re-apply power,
+        // presumably after fixing the issue.
+        shield_faulted = false;
+      } else {
+        // The pololu motor shield short circuit detection appears to be
+        // incredibly sensitive, firing on trains going over points, causing
+        // momentary short circuit, etc. So we take a calculated risk and
+        // re-enable power again here, on the assumption the board's protection
+        // will kick in again automatically if the fault persists, at which
+        // point we'll do our normal disable power action.
+        digitalWrite(SIGNAL_ENABLE_PIN_PROG,LOW);
+        digitalWrite(SIGNAL_ENABLE_PIN_MAIN,LOW);
+        // Wait briefly
+        delay(5);
+        // Turn on power again.
+        digitalWrite(SIGNAL_ENABLE_PIN_PROG,HIGH);
+        digitalWrite(SIGNAL_ENABLE_PIN_MAIN,HIGH);
+        // Set fault flag.
+        shield_faulted = true;
+        INTERFACE.print("<psw>");  // power shield warning
+      }
+    } else {
+      // Reset fault state, board is good.
+      if (shield_faulted) {
+        shield_faulted = false;
+        INTERFACE.print("<pso>");  // power shield OK
+      }
     }
   }
 
   Sensor::check();    // check sensors for activate/de-activate
-  
 } // loop
 
 ///////////////////////////////////////////////////////////////////////////////
